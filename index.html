@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guild Bot V3</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          fontFamily: { poppins: ["Poppins", "sans-serif"] },
+          colors: {
+            primary: "#10B981",
+            secondary: "#3B82F6",
+            darkBg: "#0B1220",
+            cardDark: "#121B2E"
+          },
+          boxShadow: {
+            glow: "0 0 0 1px rgba(16,185,129,.15), 0 10px 30px rgba(16,185,129,.18)"
+          }
+        }
+      }
+    };
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
+
+  <style>
+    html { scroll-behavior: smooth; }
+    body {
+      transition: background-color .4s ease, color .4s ease;
+      animation: pageIn .8s ease;
+      background-image:
+        radial-gradient(circle at 15% 15%, rgba(16,185,129,.08), transparent 30%),
+        radial-gradient(circle at 85% 20%, rgba(59,130,246,.08), transparent 35%);
+    }
+    @keyframes pageIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .bg-grid {
+      background-image:
+        linear-gradient(to right, rgba(148,163,184,.08) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(148,163,184,.08) 1px, transparent 1px);
+      background-size: 30px 30px;
+    }
+
+    .glass {
+      background: rgba(255,255,255,.65);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,.35);
+    }
+    .dark .glass {
+      background: rgba(15,23,42,.55);
+      border-color: rgba(148,163,184,.14);
+    }
+
+    .card-hover {
+      transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+    }
+    .card-hover:hover {
+      transform: translateY(-8px) scale(1.01);
+      box-shadow: 0 18px 40px rgba(16,185,129,.16);
+      border-color: rgba(16,185,129,.35);
+    }
+
+    .blob {
+      animation: blob 14s infinite ease-in-out;
+      filter: blur(55px);
+      opacity: .22;
+    }
+    .blob2 { animation-delay: 2.5s; }
+    .blob3 { animation-delay: 5s; }
+    @keyframes blob {
+      0%   { transform: translate(0,0) scale(1); }
+      33%  { transform: translate(35px,-55px) scale(1.12); }
+      66%  { transform: translate(-30px,20px) scale(.92); }
+      100% { transform: translate(0,0) scale(1); }
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: all .7s ease;
+    }
+    .reveal.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .command-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height .35s ease;
+    }
+    .command-toggle.active + .command-content { max-height: 1200px; }
+    .command-toggle i.chev { transition: transform .25s ease; }
+    .command-toggle.active i.chev { transform: rotate(180deg); }
+
+    .icon-sun, .icon-moon { display:none; }
+    html.light .icon-moon { display:block; }
+    html.dark .icon-sun { display:block; }
+
+    .ripple {
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+    }
+    .ripple-effect {
+      position: absolute;
+      border-radius: 999px;
+      transform: scale(0);
+      animation: rippleAnim 600ms linear;
+      background: rgba(255,255,255,.6);
+      pointer-events: none;
+      z-index: 0;
+    }
+    @keyframes rippleAnim { to { transform: scale(4); opacity: 0; } }
+
+    #scrollProgress {
+      position: fixed;
+      top: 0; left: 0;
+      height: 3px;
+      width: 0%;
+      z-index: 70;
+      background: linear-gradient(90deg, #10B981, #3B82F6);
+      box-shadow: 0 0 12px rgba(59,130,246,.45);
+    }
+
+    .section-title { letter-spacing: -.02em; }
+  </style>
+</head>
+<body class="font-poppins bg-gray-50 text-gray-800 dark:bg-darkBg dark:text-gray-100 min-h-screen antialiased relative overflow-x-hidden">
+
+  <div id="scrollProgress"></div>
+
+  <div class="fixed inset-0 -z-20 bg-grid pointer-events-none"></div>
+  <div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+    <div class="blob absolute top-10 left-8 w-72 h-72 rounded-full bg-emerald-400"></div>
+    <div class="blob blob2 absolute top-28 right-8 w-80 h-80 rounded-full bg-blue-400"></div>
+    <div class="blob blob3 absolute bottom-8 left-1/3 w-72 h-72 rounded-full bg-violet-500"></div>
+  </div>
+
+  <!-- NAVBAR -->
+  <nav class="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-7xl glass rounded-2xl shadow-xl">
+    <div class="px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white shadow-lg">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <div>
+          <h1 class="font-extrabold leading-tight text-sm sm:text-base">FREE FIRE GUILD BOT</h1>
+          <p class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">R1 FAHAD</p>
+        </div>
+      </div>
+
+      <div class="hidden md:flex items-center gap-5 text-sm font-medium">
+        <a href="#pricing" class="hover:text-primary transition">Pricing</a>
+        <a href="#commands" class="hover:text-primary transition">Commands</a>
+        <a href="#contact" class="hover:text-primary transition">Contact</a>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="themeToggleBtn" class="p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-slate-900/80 hover:scale-105 transition" aria-label="Theme switcher">
+          <i class="fa-solid fa-moon icon-moon text-indigo-600"></i>
+          <i class="fa-solid fa-sun icon-sun text-amber-400"></i>
+        </button>
+
+        <button id="menuBtn" class="md:hidden p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-slate-900/80" aria-label="Open menu">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+      </div>
+    </div>
+
+    <div id="mobileMenu" class="md:hidden hidden border-t border-gray-200 dark:border-gray-700 px-4 pb-4">
+      <div class="pt-3 flex flex-col gap-2 text-sm">
+        <a href="#pricing" class="px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800">Pricing</a>
+        <a href="#commands" class="px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800">Commands</a>
+        <a href="#contact" class="px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800">Contact</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <header class="pt-32 sm:pt-36 pb-14 px-4 sm:px-6 relative">
+    <div class="max-w-7xl mx-auto">
+      <div class="grid lg:grid-cols-2 gap-8 items-center">
+        <div class="reveal">
+          <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-emerald-300/40 bg-emerald-500/10 text-primary text-xs font-semibold mb-4">
+            <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+            Free Fire Guild Bot • R1 Fahad
+          </div>
+
+          <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight section-title">
+            Free Fire <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary via-secondary to-violet-500">Guild Bot V3</span>
+          </h2>
+
+          <p class="mt-5 text-base sm:text-lg text-gray-600 dark:text-gray-300 max-w-xl">
+            A Premium Free Fire Guild Bot With Advanced Commands, Squad Tools, Emote Features, Tutorial Guides, And More Powerfull Commands..
+          </p>
+
+          <div class="mt-8 flex flex-col sm:flex-row gap-3">
+            <a href="#pricing" class="ripple inline-flex items-center justify-center px-6 py-3 rounded-xl bg-primary hover:bg-emerald-600 text-white font-semibold shadow-glow transition">
+              <i class="fa-solid fa-bolt mr-2"></i> Get Bot Now
+            </a>
+            <a href="#commands" class="ripple inline-flex items-center justify-center px-6 py-3 rounded-xl border border-gray-300 dark:border-gray-700 hover:bg-white/70 dark:hover:bg-slate-800 text-sm sm:text-base font-semibold transition">
+              <i class="fa-solid fa-book-open mr-2"></i> View Commands
+            </a>
+          </div>
+        </div>
+
+        <!-- HERO BOX (all requested content moved here) -->
+        <div class="reveal">
+          <div class="relative glass rounded-3xl p-4 sm:p-5 shadow-2xl border border-white/20 dark:border-slate-700/50">
+            <div class="flex items-center justify-start mb-4">
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-red-400"></span>
+                <span class="w-3 h-3 rounded-full bg-yellow-400"></span>
+                <span class="w-3 h-3 rounded-full bg-green-400"></span>
+              </div>
+            </div>
+
+            <!-- Put all items inside hero box -->
+            <div class="grid grid-cols-2 gap-4">
+              <div class="rounded-2xl p-4 bg-white/70 dark:bg-slate-900/60 border border-gray-200 dark:border-slate-700">
+                <div class="font-bold text-2xl sm:text-3xl">99.9%</div>
+                <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Uptime</div>
+              </div>
+
+              <div class="rounded-2xl p-4 bg-white/70 dark:bg-slate-900/60 border border-gray-200 dark:border-slate-700">
+                <div class="font-bold text-2xl sm:text-3xl">4 Plans</div>
+                <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Flexible Pricing</div>
+              </div>
+
+              <div class="rounded-2xl p-4 bg-white/70 dark:bg-slate-900/60 border border-gray-200 dark:border-slate-700">
+                <div class="font-bold text-2xl sm:text-3xl">24/7</div>
+                <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Support Chat</div>
+              </div>
+
+              <div class="rounded-2xl p-4 bg-white/70 dark:bg-slate-900/60 border border-gray-200 dark:border-slate-700">
+                <div class="font-bold text-2xl sm:text-3xl">V3</div>
+                <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Bot Version</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- PRICING -->
+  <section id="pricing" class="py-14 px-4 sm:px-6">
+    <div class="max-w-7xl mx-auto">
+      <div class="text-center mb-10 reveal">
+        <h3 class="text-3xl sm:text-4xl font-extrabold section-title">Choose Your Plan</h3>
+      </div>
+      <div id="pricingGrid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6"></div>
+    </div>
+  </section>
+
+  <!-- COMMANDS -->
+  <section id="commands" class="py-14 px-4 sm:px-6">
+    <div class="max-w-5xl mx-auto">
+      <div class="text-center mb-10 reveal">
+        <h3 class="text-3xl sm:text-4xl font-extrabold section-title">How To Use Guild Bot</h3>
+        <p class="mt-2 text-gray-600 dark:text-gray-400">Commands, tutorial section, and usage guide.</p>
+      </div>
+
+      <div class="reveal mb-8 glass rounded-2xl p-4 sm:p-5 shadow-lg">
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <h4 class="font-bold text-lg"><i class="fa-solid fa-circle-play text-primary mr-2"></i> Tutorial Media</h4>
+          <span class="text-xs text-gray-500">Coming Soon</span>
+        </div>
+        <div class="aspect-video rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-white/60 dark:bg-slate-900/50 flex flex-col items-center justify-center text-center p-4">
+          <i class="fa-solid fa-photo-film text-4xl text-gray-400 mb-3"></i>
+          <p class="font-medium">Coming Soon</p>
+          <p class="text-xs text-gray-500 mt-1">Not avaliable <code>&lt;video&gt;</code> or <code>&lt;img&gt;</code></p>
+        </div>
+      </div>
+
+      <div class="space-y-4 reveal" id="accordionWrap"></div>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section id="contact" class="py-14 px-4 sm:px-6">
+    <div class="max-w-4xl mx-auto">
+      <div class="reveal glass rounded-2xl p-6 sm:p-8 shadow-xl border border-gray-200 dark:border-slate-700 text-center">
+        <h3 class="text-3xl sm:text-4xl font-extrabold section-title">Contact</h3>
+        <p class="mt-2 text-gray-600 dark:text-gray-400">Order your Guild Bot package directly on WhatsApp.</p>
+
+        <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+          <a href="https://wa.me/8801755850613" target="_blank"
+             class="ripple inline-flex items-center justify-center px-6 py-3 rounded-xl bg-green-500 hover:bg-green-600 text-white font-semibold shadow-lg">
+            <i class="fa-brands fa-whatsapp mr-2"></i> Chat on WhatsApp
+          </a>
+          <a href="#pricing"
+             class="ripple inline-flex items-center justify-center px-6 py-3 rounded-xl border border-gray-300 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-800 font-semibold">
+            <i class="fa-solid fa-tag mr-2"></i> View Pricing
+          </a>
+        </div>
+
+        <div class="mt-5 text-sm text-gray-500 dark:text-gray-400 space-y-1">
+          <p><strong>Number:</strong> +8801755850613</p>
+          <p><strong>Developer:</strong> R1 FAHAD</p>
+          <p><strong>Free Fire Guild Bot</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="px-4 sm:px-6 py-10 mt-10 border-t border-gray-200 dark:border-slate-800 bg-white/60 dark:bg-[#0b1220]/60 backdrop-blur">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="text-center md:text-left">
+        <p class="font-semibold">© 2026 Guild Bot (R1ᵛ³ Ultra Premium)</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Devoloped by R1 Fahad</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="https://wa.me/8801755850613" target="_blank" class="w-11 h-11 rounded-xl flex items-center justify-center border border-gray-200 dark:border-slate-700 hover:bg-green-500 hover:text-white transition">
+          <i class="fa-brands fa-whatsapp text-lg"></i>
+        </a>
+        <a href="#pricing" class="w-11 h-11 rounded-xl flex items-center justify-center border border-gray-200 dark:border-slate-700 hover:bg-primary hover:text-white transition">
+          <i class="fa-solid fa-tag text-lg"></i>
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const DEFAULT_PLANS = [
+      {
+        id: "trial",
+        name: "Free Trial",
+        label: "One Time",
+        durationLabel: "1 Hour",
+        price: 0,
+        style: "gray",
+        popular: false,
+        buttonText: "Claim Free Trial",
+        waText: "I want Free Guild Bot Trail",
+        features: ["1 Hour Access", "All Commands", "For Testing", "One Time Only"]
+      },
+      {
+        id: "starter",
+        name: "Starter",
+        label: "1 Day",
+        durationLabel: "1 Day",
+        price: 15,
+        style: "blue",
+        popular: false,
+        buttonText: "Buy Now",
+        waText: "I Want To buy Guild Bot For 1 Days 15 taka",
+        features: ["24 Hours Access", "All Advanced Commands", "Priority Support", "Fast Delivery"]
+      },
+      {
+        id: "pro",
+        name: "Pro",
+        label: "7 Days",
+        durationLabel: "7 Days",
+        price: 100,
+        style: "emerald",
+        popular: true,
+        buttonText: "Buy Now",
+        waText: "I Want To buy Guild Bot For 7 Days 100 taka",
+        features: ["7 Days Access", "All Advanced Commands", "Priority Support", "Most Popular"]
+      },
+      {
+        id: "legend",
+        name: "Legend",
+        label: "30 Days",
+        durationLabel: "30 Days",
+        price: 300,
+        style: "violet",
+        popular: false,
+        buttonText: "Buy Now",
+        waText: "I Want To buy Guild Bot For 30 Days 300 taka",
+        features: ["30 Days Full Access", "All Advanced Commands", "Priority Support", "Best Value"]
+      }
+    ];
+
+    let plans = JSON.parse(localStorage.getItem("guildbot_v2_plans")) || DEFAULT_PLANS;
+
+    const commandsData = [
+      {
+        title: "Squad Commands",
+        icon: "fa-users",
+        color: "text-blue-500",
+        items: [
+          ["/join [code]", "Joins a squad using team code"],
+          ["/exit", "Bot leaves current squad"],
+          ["/kick [uid]", "Kicks specific player"],
+          ["/5", "Create 5 player group"],
+          ["/6", "Create 6 player group"]
+        ]
+      },
+      {
+        title: "Evo Emotes & Bundle",
+        icon: "fa-face-smile",
+        color: "text-yellow-500",
+        items: [
+          ["/e [emote id]", "Show emote to yourself"],
+          ["/e [uid] [emote id]", "Show emote to target player"],
+          ["@evos", "Start automated evo emote"],
+          ["@sevos", "Stop automated evo emote"],
+          ["/evo [uid] [1-21]", "Send specific evo gun emote"],
+          ["/bundle [name]", "Equip bundle (Naruto, Itachi, etc.)"]
+        ]
+      },
+      {
+        title: "Spam & Attacks",
+        icon: "fa-bomb",
+        color: "text-red-500",
+        items: [
+          ["/msg [text] [x]", "Spam text x times"],
+          ["/lag [code]", "Send lag to team code (use /stop lag)"],
+          ["/reject [uid]", "Spam massive banner to user"],
+          ["/spm_inv [uid]", "Spam invites with V-badges"],
+          ["/spam [uid]", "Send 100 friend requests"]
+        ]
+      },
+      {
+        title: "V Badges Invite",
+        icon: "fa-crown",
+        color: "text-purple-500",
+        items: [
+          ["/s1 [uid]", "Join request with Craftland badge"],
+          ["/s2 [uid]", "Join request with New V badge"],
+          ["/s3 [uid]", "Join request with Moderator badge"],
+          ["/s4 [uid]", "Join request with Old V badge"],
+          ["/s5 [uid]", "Join request with Esports badge"]
+        ]
+      },
+      {
+        title: "Titles & Rooms",
+        icon: "fa-door-open",
+        color: "text-indigo-500",
+        items: [
+          ["/title [uid]", "10 years titles"],
+          ["/joinroom [id] [pass]", "Join custom room"],
+          ["/spamroom [id] [uid] [msg]", "Spam in room chat"]
+        ]
+      },
+      {
+        title: "Info",
+        icon: "fa-robot",
+        color: "text-teal-500",
+        items: [
+          ["/help", "Show all commands"],
+          ["/insta [username]", "Show Instagram user info"]
+        ]
+      }
+    ];
+
+    // Theme (Light/Dark only)
+    const html = document.documentElement;
+    const themeToggleBtn = document.getElementById("themeToggleBtn");
+    const THEMES = ["light", "dark"];
+
+    function applyTheme(mode) {
+      html.classList.remove("light", "dark");
+      html.classList.add(mode);
+      localStorage.setItem("guildbot_theme_v2", mode);
+
+      if (mode === "dark") html.classList.add("dark");
+      else html.classList.remove("dark");
+    }
+
+    function getCurrentTheme() {
+      return html.classList.contains("dark") ? "dark" : "light";
+    }
+
+    const savedTheme = localStorage.getItem("guildbot_theme_v2");
+    if (savedTheme && THEMES.includes(savedTheme)) applyTheme(savedTheme);
+    else applyTheme("light");
+
+    themeToggleBtn.addEventListener("click", () => {
+      const current = getCurrentTheme();
+      const next = THEMES[(THEMES.indexOf(current) + 1) % THEMES.length];
+      applyTheme(next);
+    });
+
+    // Mobile menu
+    const menuBtn = document.getElementById("menuBtn");
+    const mobileMenu = document.getElementById("mobileMenu");
+    menuBtn?.addEventListener("click", () => mobileMenu.classList.toggle("hidden"));
+    document.querySelectorAll('#mobileMenu a').forEach(a => {
+      a.addEventListener('click', () => mobileMenu.classList.add('hidden'));
+    });
+
+    // Scroll progress
+    const scrollProgress = document.getElementById("scrollProgress");
+    window.addEventListener("scroll", () => {
+      const scrollTop = window.scrollY;
+      const height = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = (scrollTop / height) * 100;
+      scrollProgress.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+    });
+
+    // Ripple
+    function bindRipple() {
+      document.querySelectorAll(".ripple").forEach(btn => {
+        if (btn.dataset.rippleBound) return;
+        btn.dataset.rippleBound = "1";
+        btn.addEventListener("click", function(e) {
+          const rect = this.getBoundingClientRect();
+          const circle = document.createElement("span");
+          const size = Math.max(rect.width, rect.height);
+          circle.classList.add("ripple-effect");
+          circle.style.width = circle.style.height = `${size}px`;
+          circle.style.left = `${e.clientX - rect.left - size/2}px`;
+          circle.style.top = `${e.clientY - rect.top - size/2}px`;
+          this.appendChild(circle);
+          setTimeout(() => circle.remove(), 600);
+        });
+      });
+    }
+    bindRipple();
+
+    // Pricing
+    const pricingGrid = document.getElementById("pricingGrid");
+
+    function getPlanColorClasses(style) {
+      const map = {
+        gray: {
+          badge: "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200",
+          btn: "bg-gray-900 hover:bg-black text-white dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white",
+          title: "text-gray-700 dark:text-gray-100",
+          glow: ""
+        },
+        blue: {
+          badge: "bg-blue-500/10 text-blue-600 border border-blue-400/20",
+          btn: "bg-blue-500 hover:bg-blue-600 text-white",
+          title: "text-blue-500",
+          glow: "shadow-[0_10px_25px_rgba(59,130,246,.25)]"
+        },
+        emerald: {
+          badge: "bg-primary/10 text-primary border border-primary/20",
+          btn: "bg-primary hover:bg-emerald-600 text-white",
+          title: "text-primary",
+          glow: "shadow-[0_10px_25px_rgba(16,185,129,.25)]"
+        },
+        violet: {
+          badge: "bg-violet-500/10 text-violet-500 border border-violet-400/20",
+          btn: "bg-violet-500 hover:bg-violet-600 text-white",
+          title: "text-violet-500",
+          glow: "shadow-[0_10px_25px_rgba(139,92,246,.25)]"
+        }
+      };
+      return map[style] || map.gray;
+    }
+
+    function planWhatsAppUrl(plan) {
+      return `https://wa.me/8801755850613?text=${encodeURIComponent(plan.waText)}`;
+    }
+
+    function renderPricing() {
+      pricingGrid.innerHTML = plans.map((plan) => {
+        const c = getPlanColorClasses(plan.style);
+        return `
+          <div class="reveal card-hover relative rounded-2xl p-5 sm:p-6 border ${plan.popular ? 'border-primary shadow-glow' : 'border-gray-200 dark:border-slate-700'} bg-white/70 dark:bg-cardDark/90 backdrop-blur flex flex-col">
+            ${plan.popular ? `<div class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold bg-primary text-white shadow-glow">MOST POPULAR</div>` : ""}
+            ${plan.label ? `<div class="absolute top-3 right-3 px-2 py-1 rounded-lg text-[10px] font-bold ${c.badge}">${plan.label}</div>` : ""}
+
+            <div class="${plan.popular ? "mt-3" : ""}">
+              <h4 class="text-lg font-bold ${c.title}">${plan.name}</h4>
+              <div class="mt-3 flex items-end gap-2">
+                <span class="text-4xl font-black">${plan.price}</span>
+                <span class="text-gray-500 dark:text-gray-400 font-medium mb-1">tk</span>
+              </div>
+              <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">${plan.durationLabel}</p>
+            </div>
+
+            <ul class="mt-5 space-y-2 text-sm text-gray-600 dark:text-gray-300 flex-grow">
+              ${plan.features.map(f => `<li><i class="fa-solid fa-check text-primary mr-2"></i>${f}</li>`).join("")}
+            </ul>
+
+            <a href="${planWhatsAppUrl(plan)}" target="_blank"
+               class="ripple mt-5 w-full text-center px-4 py-3 rounded-xl font-semibold ${c.btn} ${c.glow}">
+               <i class="fa-brands fa-whatsapp mr-2"></i>${plan.buttonText}
+            </a>
+          </div>
+        `;
+      }).join("");
+
+      observeReveals();
+      bindRipple();
+    }
+
+    // Commands
+    const accordionWrap = document.getElementById("accordionWrap");
+
+    function renderCommands() {
+      accordionWrap.innerHTML = commandsData.map(cat => `
+        <div class="rounded-2xl overflow-hidden border border-gray-200 dark:border-slate-700 bg-white/70 dark:bg-cardDark/90 shadow-sm">
+          <button class="command-toggle w-full px-4 sm:px-5 py-4 flex items-center justify-between gap-3 bg-gray-50/80 dark:bg-slate-900/50 hover:bg-gray-100 dark:hover:bg-slate-800 transition">
+            <span class="font-bold text-left text-sm sm:text-base">
+              <i class="fa-solid ${cat.icon} ${cat.color} mr-2"></i>${cat.title}
+            </span>
+            <i class="fa-solid fa-chevron-down chev text-gray-400"></i>
+          </button>
+          <div class="command-content">
+            <div class="px-4 sm:px-5 py-4 space-y-3 bg-white/70 dark:bg-cardDark/80">
+              ${cat.items.map(([cmd, desc]) => `
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <code class="inline-block w-fit px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-slate-800 text-primary font-mono text-xs sm:text-sm">${cmd}</code>
+                  <span class="text-sm text-gray-600 dark:text-gray-300">${desc}</span>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        </div>
+      `).join("");
+
+      document.querySelectorAll(".command-toggle").forEach(toggle => {
+        toggle.addEventListener("click", () => {
+          document.querySelectorAll(".command-toggle").forEach(other => {
+            if (other !== toggle) other.classList.remove("active");
+          });
+          toggle.classList.toggle("active");
+        });
+      });
+    }
+
+    // Reveal observer
+    let observer;
+    function observeReveals() {
+      if (observer) observer.disconnect();
+      observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) entry.target.classList.add("show");
+        });
+      }, { threshold: 0.12 });
+
+      document.querySelectorAll(".reveal").forEach(el => observer.observe(el));
+    }
+
+    // Init
+    renderPricing();
+    renderCommands();
+    observeReveals();
+    bindRipple();
+  </script>
+</body>
+</html>
